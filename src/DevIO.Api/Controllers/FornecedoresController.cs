@@ -12,12 +12,14 @@ namespace DevIO.Api.Controllers
     private readonly IFornecedorRepository _context;
     private readonly IFornecedorService _service;
     private readonly IMapper _mapper;
+    private readonly INotificador _notifier;
 
-    public FornecedoresController(IFornecedorRepository context, IMapper mapper, IFornecedorService service)
+    public FornecedoresController(IFornecedorRepository context, IMapper mapper, IFornecedorService service, INotificador notifier) : base(notifier)
     {
       _context = context;
       _mapper = mapper;
       _service = service;
+      _notifier = notifier;
     }
 
     [HttpGet]
@@ -40,14 +42,11 @@ namespace DevIO.Api.Controllers
     [HttpPost]
     public async Task<ActionResult<FornecedorDto>> Post(FornecedorDto fornecedorDto)
     {
-      if (!ModelState.IsValid) return BadRequest();
+      if (!ModelState.IsValid) return CustomResponse(ModelState);
 
-      var fornecedor = _mapper.Map<Fornecedor>(fornecedorDto);
-      var result = await _service.Adicionar(fornecedor);
+      await _service.Adicionar(_mapper.Map<Fornecedor>(fornecedorDto));
 
-      if (!result) return BadRequest();
-
-      return NoContent();
+      return CustomResponse(fornecedorDto);
     }
 
     [HttpPut("{id:guid}")]
@@ -55,16 +54,11 @@ namespace DevIO.Api.Controllers
     {
       if (id != fornecedorDto.Id) return BadRequest();
 
-      if (fornecedorDto == null) return BadRequest();
+      if (!ModelState.IsValid) return CustomResponse(ModelState);
 
-      if (!ModelState.IsValid) return BadRequest();
+      await _service.Atualizar(_mapper.Map<Fornecedor>(fornecedorDto));
 
-      var fornecedor = _mapper.Map<Fornecedor>(fornecedorDto);
-      var result = await _service.Atualizar(fornecedor);
-
-      if (!result) return BadRequest();
-
-      return NoContent();
+      return CustomResponse(fornecedorDto);
     }
 
     [HttpDelete("{id:guid}")]
@@ -74,11 +68,9 @@ namespace DevIO.Api.Controllers
 
       if (fornecedor == null) return NotFound();
 
-      var result = await _service.Remover(id);
+      await _service.Remover(id);
 
-      if (!result) return BadRequest();
-
-      return Ok(fornecedor);
+      return CustomResponse();
     }
 
     private async Task<FornecedorDto> GetFornecedorProductsAndAddressById(Guid id)
