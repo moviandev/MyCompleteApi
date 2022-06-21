@@ -13,13 +13,15 @@ namespace DevIO.Api.Controllers
     private readonly IFornecedorService _service;
     private readonly IMapper _mapper;
     private readonly INotificador _notifier;
+    private readonly IEnderecoRepository _enderecoRepository;
 
-    public FornecedoresController(IFornecedorRepository context, IMapper mapper, IFornecedorService service, INotificador notifier) : base(notifier)
+    public FornecedoresController(IFornecedorRepository context, IMapper mapper, IFornecedorService service, INotificador notifier, IEnderecoRepository enderecoRepository) : base(notifier)
     {
       _context = context;
       _mapper = mapper;
       _service = service;
       _notifier = notifier;
+      _enderecoRepository = enderecoRepository;
     }
 
     [HttpGet]
@@ -71,6 +73,28 @@ namespace DevIO.Api.Controllers
       await _service.Remover(id);
 
       return CustomResponse();
+    }
+
+    [HttpGet("get-address/{id:guid}")]
+    public async Task<EnderecoDto> GetAddress(Guid id)
+    {
+      return _mapper.Map<EnderecoDto>(await _enderecoRepository.ObterPorId(id));
+    }
+
+    [HttpPut("update-address/{id:guid}")]
+    public async Task<IActionResult> UpdateAddress(Guid id, EnderecoDto enderecoDto)
+    {
+      if (id != enderecoDto.Id)
+      {
+        NotifyError("O id informado não é o mesmo que foi passado na query");
+        return CustomResponse(enderecoDto);
+      }
+
+      if (!ModelState.IsValid) return CustomResponse(ModelState);
+
+      await _service.AtualizarEndereco(_mapper.Map<Endereco>(enderecoDto));
+
+      return CustomResponse(enderecoDto);
     }
 
     private async Task<FornecedorDto> GetFornecedorProductsAndAddressById(Guid id)
